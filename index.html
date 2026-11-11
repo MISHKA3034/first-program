@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Food Finder — где недорого поесть в Пинске</title>
+<style>
+  /* ===== CSS: внешний вид страницы ===== */
+  :root {
+    --purple: #6d4aff;
+    --purple-dark: #5232e0;
+    --purple-light: #efeaff;
+    --bg: #f6f5fb;
+    --card: #ffffff;
+    --text: #1f1d2b;
+    --muted: #6b6880;
+    --line: #e6e3f0;
+    --ok: #1d8a4e;
+    --warn: #b26a00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  /* Яркая шапка с градиентом (фиолетовый → розовый → оранжевый) */
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 30px 16px;
+    border-radius: 24px;
+    color: #fff;
+    background: linear-gradient(135deg, #6d4aff 0%, #b84cff 55%, #ff7a59 100%);
+    box-shadow: 0 10px 30px rgba(109, 74, 255, 0.3);
+  }
+  header h1 { margin: 0; font-size: 2.2rem; }
+  header p { margin: 8px 0 0; font-size: 1.1rem; opacity: 0.95; }
+
+  .panel {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 6px 20px rgba(80, 60, 160, 0.08);
+    margin-bottom: 20px;
+  }
+  .search {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    outline: none;
+  }
+  .search:focus { border-color: var(--purple); }
+
+  .label { margin: 16px 0 8px; font-weight: 600; }
+  .budgets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .budget-btn {
+    border: 2px solid var(--purple);
+    background: #fff;
+    color: var(--purple);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .budget-btn:hover { background: var(--purple-light); }
+  .budget-btn.active {
+    background: linear-gradient(135deg, #6d4aff, #b84cff);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .count { color: var(--muted); margin: 0 4px 12px; }
+
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(80, 60, 160, 0.08);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(80, 60, 160, 0.18); }
+
+  /* Фото сверху карточки, название — белым текстом поверх фото */
+  .card-photo {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, #7b5cff, #b18cff) center / cover;
+    color: #fff;
+  }
+  .card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-photo::after {   /* затемнение снизу, чтобы текст читался */
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0) 60%);
+  }
+  .card-title { position: absolute; left: 16px; right: 16px; bottom: 12px; z-index: 1; }
+  .card-title h2 { margin: 0; font-size: 1.35rem; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+  .type { opacity: 0.95; font-size: 0.9rem; }
+  .photo-note {
+    position: absolute; top: 8px; right: 8px; z-index: 1;
+    font-size: 0.7rem; background: rgba(0,0,0,0.45); padding: 2px 8px; border-radius: 999px;
+  }
+  .cheapest {
+    position: absolute; top: 8px; left: 8px; z-index: 1;
+    background: #ffd84d; color: #3a2c00; font-weight: 700; font-size: 0.85rem;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .address a { color: var(--text); text-decoration: none; border-bottom: 1px dashed var(--purple); }
+  .address a:hover { color: var(--purple); }
+  .map-hint { font-size: 0.8rem; color: var(--purple); }
+  .reset-btn {
+    margin-top: 14px;
+    border: none; border-radius: 999px; padding: 10px 20px;
+    background: linear-gradient(135deg, #6d4aff, #b84cff); color: #fff;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  .card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .address { margin: 0; }
+  .from {
+    display: inline-block;
+    background: var(--purple-light);
+    color: var(--purple-dark);
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    width: fit-content;
+  }
+  .menu { list-style: none; padding: 0; margin: 0; }
+  .menu li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .menu li:last-child { border-bottom: none; }
+  .price { font-weight: 700; white-space: nowrap; }
+  .more { color: var(--muted); font-size: 0.9rem; margin: 0; }
+  .badge { font-size: 0.85rem; font-weight: 600; margin: 0; }
+  .badge.ok { color: var(--ok); }
+  .badge.warn { color: var(--warn); }
+  .note { font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .source { font-size: 0.85rem; margin-top: auto; }
+  .source a { color: var(--purple); }
+
+  .empty {
+    text-align: center;
+    padding: 36px 16px;
+    background: var(--card);
+    border-radius: 20px;
+    color: var(--muted);
+  }
+  .empty strong { display: block; font-size: 1.2rem; color: var(--text); margin-bottom: 6px; }
+
+  footer { margin-top: 28px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  .credits { margin-top: 10px; font-size: 0.75rem; line-height: 1.6; }
+  .credits summary { cursor: pointer; color: var(--purple); }
+  .credits a { color: var(--muted); }
+
+  @media (max-width: 480px) {
+    header h1 { font-size: 1.6rem; }
+    .budget-btn { flex: 1 1 40%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HTML: структура страницы ===== -->
+  <header>
+    <h1>🍔 Student Food Finder</h1>
+    <p>Найди, где вкусно и недорого поесть в Пинске</p>
+  </header>
+
+  <section class="panel">
+    <input id="search" class="search" type="search"
+           placeholder="Поиск: название, блюдо или тип (например, «шаурма», «пицца»)">
+
+    <div class="label">Мой бюджет на одно блюдо:</div>
+    <div class="budgets" id="budgets">
+      <button class="budget-btn active" data-budget="0">Любой</button>
+      <button class="budget-btn" data-budget="7">До 7 BYN</button>
+      <button class="budget-btn" data-budget="15">До 15 BYN</button>
+      <button class="budget-btn" data-budget="30">До 30 BYN</button>
+    </div>
+  </section>
+
+  <p class="count" id="count"></p>
+  <div class="list" id="list"></div>
+
+  <footer>
+    Цены ориентировочные и могут меняться — уточняйте в заведении.<br>
+    Учебный проект «IT Challenge», 2026.
+    <details class="credits">
+      <summary>Фото для примера (не из самих заведений) — авторы и лицензии</summary>
+      Фото с Wikimedia Commons:
+      <a href="https://commons.wikimedia.org/wiki/File:Margherita_pizza_on_plate.jpg" target="_blank" rel="noopener">пицца</a> — Shisma, CC BY 4.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Nice_pepperoni_pizza.jpg" target="_blank" rel="noopener">пепперони</a> — YoutubeJarred33 Widower, CC BY 3.0;
+      <a href="https://commons.wikimedia.org/wiki/File:D%C3%B6ner_Kebab,_Berlin,_2010_(01).jpg" target="_blank" rel="noopener">кебаб</a> — AleGranholm, CC BY 2.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Shawarma_2.jpg" target="_blank" rel="noopener">шаурма</a> — Vis M, CC BY-SA 4.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Food-dinner-grilled-shashlik_(24244253091).jpg" target="_blank" rel="noopener">гриль</a> — Pixel.la, CC0;
+      <a href="https://commons.wikimedia.org/wiki/File:French_fries,_ketchup_and_hamburger.jpg" target="_blank" rel="noopener">бургер</a> — jeffreyw, CC BY 2.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Plate_of_chips_at_the_Chalet_Cafe,_Cowfold,_West_Sussex,_England.jpg" target="_blank" rel="noopener">картофель</a> — Acabashi, CC BY-SA 4.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Khinkali_-_Batumi.jpg" target="_blank" rel="noopener">хинкали</a> — Francesc Fort, CC BY-SA 4.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Uzbekistan_style_plov_in_Japan.jpg" target="_blank" rel="noopener">плов</a> — 赤猫法師, CC BY-SA 4.0;
+      <a href="https://commons.wikimedia.org/wiki/File:Belgian_waffles_%26_fruit_-_Brewhouse_%26_Kitchen_2026-04-14.jpg" target="_blank" rel="noopener">вафли</a> — Andy Li, CC0.
+      Фото обрезаны и уменьшены.
+    </details>
+  </footer>
+</div>
+
+<script>
+/* ===== JavaScript: данные и логика ===== */
+
+/*
+  ДАННЫЕ О ЗАВЕДЕНИЯХ.
+  Чтобы добавить новое заведение — скопируйте любой блок { ... }
+  и поменяйте в нём название, адрес, блюда и цены.
+
+  priceStatus:
+    "checked" — цены взяты из меню заведения в 2025–2026 году;
+    "approx"  — цены старые или из обзора, нужно уточнять;
+    "user"    — цены уточнены лично автором проекта;
+    "none"    — цены найти не удалось.
+
+  range (необязательно) — диапазон цен для карточки, например "5–25 BYN".
+
+  В dishes пишем только ЕДУ (без напитков), иначе фильтр бюджета
+  будет показывать заведение из-за дешёвого сока.
+*/
+const places = [
+  {
+    name: "Печь Кебаб",
+    photo: "img/pech-kebab.jpg",
+    type: "Шаурма, быстрое питание",
+    emoji: "🌯",
+    address: "пр-т Жолтовского, 17/5",
+    note: "Есть ещё точки: ул. Рокоссовского, 29/1 и ул. Брестская, 118.",
+    priceStatus: "checked",
+    dishes: [
+      { name: "Шаурма Классическая", price: 7.5 },
+      { name: "Шаурма Сырная", price: 8.5 },
+      { name: "Шаурма Барбекю", price: 8.5 },
+      { name: "Шаурма Салями-Гриль", price: 9 },
+      { name: "Шаурма Грибная", price: 9 },
+      { name: "Шаурма Баварская", price: 11 }
+    ],
+    source: { title: "Яндекс Карты — меню (обновлено 4 октября)", url: "https://yandex.by/maps/org/pech_kebab/92207085059/menu/" }
+  },
+  {
+    name: "Lavash",
+    photo: "img/lavash.jpg",
+    type: "Шаурма, хот-доги",
+    emoji: "🥙",
+    address: "ул. Брестская, 19",
+    note: "Работает 10:00–23:00 (по данным справочника).",
+    priceStatus: "checked",
+    dishes: [
+      { name: "Шаурма Классическая", price: 7.5 },
+      { name: "Шаурма Грузинская (острая)", price: 8.5 },
+      { name: "Шаурма Сырная", price: 8.5 },
+      { name: "Шаурма Салями-Гриль", price: 9 },
+      { name: "Шаурма Крем-Чиз", price: 9 },
+      { name: "Шаурма Баварская", price: 11 }
+    ],
+    source: { title: "Яндекс Карты — меню (обновлено 5 октября)", url: "https://yandex.by/maps/org/lavash/116095788275/menu/" }
+  },
+  {
+    name: "Burger King",
+    photo: "img/burger-king.jpg",
+    type: "Бургеры, фастфуд",
+    emoji: "🍔",
+    address: "ул. 60 лет Октября, 19 (2 этаж)",
+    note: "Цены из сервиса доставки — в самом ресторане могут немного отличаться.",
+    priceStatus: "checked",
+    dishes: [
+      { name: "Картофель Кинг фри", price: 5.3 },
+      { name: "Воппер Джуниор", price: 6.9 },
+      { name: "Чизбургер двойной", price: 8.9 },
+      { name: "Биг Кинг", price: 11.5 },
+      { name: "Воппер", price: 11.9 },
+      { name: "Воппер Двойной", price: 16.1 }
+    ],
+    source: { title: "Clever.by — Burger King Пинск", url: "https://clever.by/pinsk/bkpinsk-delivery/" }
+  },
+  {
+    name: "Обжора",
+    photo: "img/obzhora.jpg",
+    type: "Кафе: шаурма, бургеры",
+    emoji: "🍟",
+    address: "ул. Иркутско-Пинской Дивизии, 36",
+    note: "Работает 12:00–22:00.",
+    priceStatus: "user",
+    range: "4,50–15 BYN",
+    dishes: [
+      { name: "Картофель фри", price: 4.5 },
+      { name: "Шаурма", price: 5.8 },
+      { name: "Бургеры", price: null }
+    ],
+    source: { title: "Tripadvisor — отзывы об «Обжоре»", url: "https://www.tripadvisor.ru/Restaurant_Review-g1136483-d13295309-Reviews-Obzhora-Pinsk_Brest_Region.html" }
+  },
+  {
+    name: "Грильзона",
+    photo: "img/grillzona.jpg",
+    type: "Шаурма (шаверма), гриль-роллы, мясные сеты",
+    emoji: "🔥",
+    address: "ул. Белова, 12",
+    note: "Работает ежедневно 11:00–23:00. Самые дорогие позиции — большие мясные сеты.",
+    priceStatus: "user",
+    range: "8–50 BYN",
+    dishes: [
+      { name: "Шаверма (самая недорогая)", price: 8 },
+      { name: "Шаверма Классическая с курицей, 300 г", price: 9 },
+      { name: "Гриль-роллы (8 кусочков)", price: null },
+      { name: "Мясной сет 1,5 кг", price: 50 }
+    ],
+    source: { title: "Slivki.by — акция «Грильзона» Пинск", url: "https://pinsk.slivki.by/shaurma-sety-skidka-grilzona2" }
+  },
+  {
+    name: "Пицца Итальяна",
+    photo: "img/pizza-italiana.jpg",
+    type: "Пиццерия",
+    emoji: "🍕",
+    address: "ул. Ленина, 31/2 (вход с ул. Коржа)",
+    note: "Цены из сервиса доставки, последнее обновление — 30.07.2025.",
+    priceStatus: "approx",
+    dishes: [
+      { name: "Картофель фри, 70 г", price: 3.7 },
+      { name: "Ролотто «Тэзоро»", price: 5.9 },
+      { name: "Наггетсы, 6 шт", price: 6.9 },
+      { name: "Пицца «Мясная», 25 см", price: 8.9 },
+      { name: "Пицца «Маргарита», 32 см", price: 14.5 },
+      { name: "Пицца «Четыре сыра», 32 см", price: 23.5 }
+    ],
+    source: { title: "Clever.by — Пицца Итальяна Пинск", url: "https://clever.by/pinsk/pizzaitaliana/" }
+  },
+  {
+    name: "Хинкальня",
+    photo: "img/hinkalnya.jpg",
+    type: "Грузинская кухня",
+    emoji: "🥟",
+    address: "ул. Ленина, 55",
+    note: "Хинкали продаются поштучно (цена за 1 шт.). Цены из сервиса доставки.",
+    priceStatus: "checked",
+    dishes: [
+      { name: "Хинкали с сыром (1 шт)", price: 4 },
+      { name: "Хинкали с говядиной (1 шт)", price: 4 },
+      { name: "Хинкали с бараниной (1 шт)", price: 4.5 },
+      { name: "Гвезели", price: 17 },
+      { name: "Хачапури по-аджарски", price: 20 },
+      { name: "Кубдари с курицей и грибами", price: 20 }
+    ],
+    source: { title: "Just-eat.by — Хинкальня Пинск", url: "https://just-eat.by/hinkalnya-pinsk" }
+  },
+  {
+    name: "Чайхана",
+    photo: "img/chaihana.jpg",
+    type: "Узбекская кухня: плов, самса, манты",
+    emoji: "🍚",
+    address: "ул. Ленина, 24",
+    note: "Блюда и цены из сервиса доставки Clever.by.",
+    priceStatus: "user",
+    range: "5–25 BYN",
+    dishes: [
+      { name: "Самса с курицей", price: 5 },
+      { name: "Самса с телятиной", price: 5 },
+      { name: "Чебурек", price: 7 },
+      { name: "Плов «По-узбекски», 350 г", price: 15 },
+      { name: "Манты с телятиной, 350 г", price: 15 }
+    ],
+    source: { title: "Clever.by — Чайхана Пинск", url: "https://clever.by/pinsk/chaikhanapinsk-delivery/" }
+  },
+  {
+    name: "Додо Пицца",
+    photo: "img/dodo.jpg",
+    type: "Пиццерия",
+    emoji: "🍕",
+    address: "ул. Ленина, 1",
+    note: "Работает 11:00–23:00. Цены сети по меню в Минске (июнь 2026) — в Пинске могут немного отличаться.",
+    priceStatus: "approx",
+    dishes: [
+      { name: "Пицца «Маргарита»", price: 16.9 },
+      { name: "Пицца «Пепперони»", price: 19.9 },
+      { name: "Пицца «Мясная»", price: 29.9 }
+    ],
+    source: { title: "2ГИС — меню Додо Пицца (цены), адрес — dodopizza.by", url: "https://2gis.by/minsk/firm/70000001059101599/tab/prices" }
+  },
+  {
+    name: "Счастье",
+    photo: "img/schastye.jpg",
+    type: "Кафе: вафли, драники, салаты",
+    emoji: "🧇",
+    address: "ул. Ленина, 10",
+    note: "Цены из старого обзора — могли измениться.",
+    priceStatus: "approx",
+    dishes: [
+      { name: "Десерт", price: 7 },
+      { name: "Наггетсы", price: 8 },
+      { name: "Салат «Цезарь»", price: 15 },
+      { name: "Бургер", price: 15 }
+    ],
+    source: { title: "Обзор кафе Пинска на p-v.by", url: "https://p-v.by/news/society/kafe-v-pinske-obzor-luchshih-mest-dlya-kofe-i-perekusa/" }
+  }
+];
+
+/* Текущее состояние фильтров: что введено в поиск и какой бюджет выбран (0 = любой) */
+let searchText = "";
+let budget = 0;
+
+const listEl = document.getElementById("list");
+const countEl = document.getElementById("count");
+
+/* Красиво пишем цену: 7.5 -> "7,50 BYN" */
+function formatPrice(p) {
+  return p.toFixed(2).replace(".", ",") + " BYN";
+}
+
+/* Самое дешёвое блюдо заведения (или null, если цен нет) */
+function minPrice(place) {
+  const prices = place.dishes.map(d => d.price).filter(p => p !== null);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/* Подходит ли заведение под поиск: ищем в названии, типе, адресе и блюдах */
+function matchesSearch(place) {
+  if (!searchText) return true;
+  const text = (place.name + " " + place.type + " " + place.address + " " +
+                place.dishes.map(d => d.name).join(" ")).toLowerCase();
+  return text.includes(searchText);
+}
+
+/*
+  Главная логика фильтра по бюджету:
+  заведение подходит, если в нём есть ХОТЯ БЫ ОДНО блюдо дешевле или равно бюджету.
+  В карточке показываем только те блюда, которые вписываются в бюджет.
+*/
+function dishesInBudget(place) {
+  if (budget === 0) return place.dishes;
+  return place.dishes.filter(d => d.price !== null && d.price <= budget);
+}
+
+/* Перерисовываем список карточек */
+function render() {
+  const result = places
+    .filter(matchesSearch)
+    .filter(p => dishesInBudget(p).length > 0)
+    .sort((a, b) => (minPrice(a) ?? 999) - (minPrice(b) ?? 999));
+
+  if (result.length === 0) {
+    countEl.textContent = "";
+    listEl.innerHTML = `
+      <div class="empty">
+        <strong>😔 Ничего не найдено</strong>
+        Попробуйте изменить запрос или выбрать бюджет побольше.<br>
+        <button class="reset-btn" onclick="resetFilters()">Показать все заведения</button>
+      </div>`;
+    return;
+  }
+
+  countEl.textContent = "Найдено заведений: " + result.length;
+
+  listEl.innerHTML = result.map((place, index) => {
+    const shown = dishesInBudget(place);
+    const hidden = place.dishes.length - shown.length;
+    const min = minPrice(place);
+
+    const badge = {
+      checked: '<p class="badge ok">✔ Цены из меню 2025–2026</p>',
+      user:    '<p class="badge ok">✔ Цены уточнены автором проекта (ноябрь 2026)</p>',
+      approx:  '<p class="badge warn">⚠ Цены ориентировочные</p>',
+      none:    '<p class="badge warn">⚠ Цены не найдены — уточняйте на месте</p>'
+    }[place.priceStatus];
+
+    return `
+      <article class="card">
+        <div class="card-photo">
+          <img src="${place.photo}" alt="${place.type}" loading="lazy">
+          ${index === 0 && result.length > 1 ? '<span class="cheapest">💰 Самое дешёвое</span>' : ""}
+          <span class="photo-note">фото для примера</span>
+          <div class="card-title">
+            <h2>${place.emoji} ${place.name}</h2>
+            <div class="type">${place.type}</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="address">📍 <a href="${mapLink(place)}" target="_blank" rel="noopener">${place.address}</a>
+            <span class="map-hint">— на карте</span></p>
+          ${place.range ? `<span class="from">${place.range}</span>`
+            : min !== null ? `<span class="from">от ${formatPrice(min)}</span>` : ""}
+          <ul class="menu">
+            ${shown.map(d => `
+              <li><span>${d.name}</span>
+                  <span class="price">${d.price !== null ? formatPrice(d.price) : "—"}</span></li>`).join("")}
+          </ul>
+          ${hidden > 0 ? `<p class="more">Ещё ${hidden} блюд(а) дороже вашего бюджета</p>` : ""}
+          ${badge}
+          <p class="note">${place.note}</p>
+          <p class="source">Источник: <a href="${place.source.url}" target="_blank" rel="noopener">${place.source.title}</a></p>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+/* Ссылка на Яндекс Карты: ищем «Пинск, адрес, название» */
+function mapLink(place) {
+  return "https://yandex.by/maps/?text=" +
+         encodeURIComponent("Пинск, " + place.address + ", " + place.name);
+}
+
+/* Кнопка «Показать все»: очищаем поиск и ставим бюджет «Любой» */
+function resetFilters() {
+  searchText = "";
+  budget = 0;
+  document.getElementById("search").value = "";
+  document.querySelectorAll(".budget-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.budget === "0"));
+  render();
+}
+
+/* Пользователь печатает в поиске -> обновляем список */
+document.getElementById("search").addEventListener("input", e => {
+  searchText = e.target.value.trim().toLowerCase();
+  render();
+});
+
+/* Пользователь нажал кнопку бюджета -> запоминаем бюджет и обновляем список */
+document.querySelectorAll(".budget-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".budget-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    budget = Number(btn.dataset.budget);
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
